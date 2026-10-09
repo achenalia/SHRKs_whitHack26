@@ -1,61 +1,78 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useEffect, useState } from 'react';
+import { Button, SafeAreaView, StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+import supabaseClient, { getUser, signOut } from '@/lib/supabaseClient';
 
 export default function HomeScreen() {
+  const [user, setUser] = useState<any | null>(null);
+  const router = useRouter();
+
+  async function loadUser() {
+    try {
+      const result = await getUser();
+      setUser(result?.data?.user ?? null);
+    } catch {
+      setUser(null);
+    }
+  }
+
+  useEffect(() => {
+    loadUser();
+  }, []);
+
+  async function handleSignOut() {
+    await signOut();
+    await loadUser();
+  }
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
+        <View style={styles.hero}>
           <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
+            SHRKs
           </ThemedText>
-        </ThemedView>
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+          <ThemedText type="subtitle" style={styles.subtitle}>
+            Better posture starts here.
+          </ThemedText>
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
+          {((supabaseClient as any)?.isMock ?? false) && (
+            <ThemedText type="small" style={styles.mockBanner}>
+              Demo mode enabled
+            </ThemedText>
+          )}
+        </View>
 
-        {Platform.OS === 'web' && <WebBadge />}
+        <View style={styles.card}>
+          <ThemedText type="smallBold">Session</ThemedText>
+          <ThemedText style={styles.statusText}>
+            {user ? `Signed in as ${user.email ?? user.id}` : 'No account yet'}
+          </ThemedText>
+
+          <View style={styles.actions}>
+            <View style={styles.buttonWrap}>
+              <Button title="Open Auth" onPress={() => router.push('/auth')} color="#2f6bf6" />
+            </View>
+            <View style={styles.buttonWrap}>
+              <Button title="Sign Out" onPress={handleSignOut} color="#d9534f" />
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.card}>
+          <ThemedText type="smallBold">Prototype</ThemedText>
+          <ThemedText style={styles.bodyText}>
+            Start building your exercise posture tracker, movement scoring, and coaching experience.
+          </ThemedText>
+
+          <View style={styles.buttonWrapPrimary}>
+            <Button title="Open Pose Detector" onPress={() => router.push('/pose')} color="#2563eb" />
+          </View>
+        </View>
       </SafeAreaView>
     </ThemedView>
   );
@@ -64,35 +81,56 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
   },
   safeArea: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 28,
     justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+    gap: 18,
+  },
+  hero: {
+    alignItems: 'center',
+    marginBottom: 8,
   },
   title: {
     textAlign: 'center',
   },
-  code: {
-    textTransform: 'uppercase',
+  subtitle: {
+    textAlign: 'center',
+    marginTop: 8,
+    color: '#64748b',
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+  mockBanner: {
+    marginTop: 10,
+    color: '#b45309',
+    fontWeight: '600',
+  },
+  card: {
+    backgroundColor: 'rgba(148, 163, 184, 0.08)',
+    borderRadius: 16,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(148,163,184,0.18)',
+  },
+  statusText: {
+    marginTop: 8,
+    lineHeight: 22,
+  },
+  bodyText: {
+    marginTop: 8,
+    lineHeight: 22,
+    color: '#475569',
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 14,
+  },
+  buttonWrap: {
+    flex: 1,
+  },
+  buttonWrapPrimary: {
+    marginTop: 14,
   },
 });
